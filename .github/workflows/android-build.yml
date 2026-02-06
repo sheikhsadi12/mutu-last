@@ -1,18 +1,9 @@
-name: Android Build & APK
+name: Android CI
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-        - debug
-        - release
 
 jobs:
   build:
@@ -25,42 +16,54 @@ jobs:
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
         distribution: 'temurin'
+        java-version: '17'
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       
-    - name: Make gradlew executable
-      run: chmod +x gradlew
+    - name: Create missing gradle files
+      run: |
+        # Create gradlew if missing
+        if [ ! -f "gradlew" ]; then
+          echo "Creating gradlew wrapper..."
+          wget -q https://raw.githubusercontent.com/gradle/gradle/master/gradlew -O gradlew
+          chmod +x gradlew
+        fi
+        
+        # Create gradle wrapper directory
+        mkdir -p gradle/wrapper
+        if [ ! -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+          cat > gradle/wrapper/gradle-wrapper.properties << 'GRADLE_PROPS'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+GRADLE_PROPS
+        fi
+        
+        echo "✅ Gradle setup complete"
       
-    - name: Build Debug APK
-      if: github.event.inputs.release_type == 'debug'
+    - name: Build with Gradle
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        ./gradlew assembleDebug
-        echo "✅ Build successful!"
-        echo "📁 APK Location: app/build/outputs/apk/debug/"
+        ./gradlew assembleDebug || ./gradlew build
         
-    - name: Upload Debug APK
+    - name: Upload APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: ai-teacher-notebook-apk
+        name: app-debug-apk
         path: app/build/outputs/apk/debug/*.apk
         retention-days: 7
         
-    - name: Show Download Instructions
+    - name: Build Status
       run: |
-        echo "🎉 Android Build completed successfully!"
-        echo ""
-        echo "📥 DOWNLOAD APK:"
-        echo "1. Go to this workflow run"
-        echo "2. Scroll to 'Artifacts' section"
-        echo "3. Download 'ai-teacher-notebook-apk'"
-        echo "4. Install on your Android phone"
-        echo ""
-        echo "📱 INSTALLATION:"
-        echo "- Allow 'Install from unknown sources'"
-        echo "- Install the downloaded APK"
-        echo "- Open and enjoy your AI Teacher Notebook!"
+        if [ -f "app/build/outputs/apk/debug/*.apk" ]; then
+          echo "🎉 Build successful! APK generated."
+          echo "📥 Download from Artifacts section"
+        else
+          echo "⚠️ Build may have issues. Check logs above."
+        fi
