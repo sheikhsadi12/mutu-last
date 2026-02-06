@@ -1,9 +1,18 @@
-name: Android Build
+name: Android Build & APK
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
 
 jobs:
   build:
@@ -11,37 +20,47 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
+      uses: android-actions/setup-android@v3
       
-    - name: Grant execute permission
-      run: chmod +x ./gradlew
+    - name: Make gradlew executable
+      run: chmod +x gradlew
       
     - name: Build Debug APK
+      if: github.event.inputs.release_type == 'debug'
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
         ./gradlew assembleDebug
-        echo "Build successful!"
+        echo "✅ Build successful!"
+        echo "📁 APK Location: app/build/outputs/apk/debug/"
         
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
       with:
-        name: app-debug-apk
+        name: ai-teacher-notebook-apk
         path: app/build/outputs/apk/debug/*.apk
         retention-days: 7
         
-    - name: Success Message
+    - name: Show Download Instructions
       run: |
-        echo "✅ Build completed successfully!"
-        echo "📥 Download APK from Artifacts section"
-        echo "🔗 Repository: https://github.com/sheikhsadi12/New-copy-app"
-        echo "🎉 AI Teacher Notebook is ready!"
+        echo "🎉 Android Build completed successfully!"
+        echo ""
+        echo "📥 DOWNLOAD APK:"
+        echo "1. Go to this workflow run"
+        echo "2. Scroll to 'Artifacts' section"
+        echo "3. Download 'ai-teacher-notebook-apk'"
+        echo "4. Install on your Android phone"
+        echo ""
+        echo "📱 INSTALLATION:"
+        echo "- Allow 'Install from unknown sources'"
+        echo "- Install the downloaded APK"
+        echo "- Open and enjoy your AI Teacher Notebook!"
