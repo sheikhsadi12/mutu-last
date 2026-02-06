@@ -1,0 +1,47 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+      
+    - name: Grant execute permission
+      run: chmod +x ./gradlew
+      
+    - name: Build Debug APK
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        ./gradlew assembleDebug
+        echo "Build successful!"
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-debug-apk
+        path: app/build/outputs/apk/debug/*.apk
+        retention-days: 7
+        
+    - name: Success Message
+      run: |
+        echo "✅ Build completed successfully!"
+        echo "📥 Download APK from Artifacts section"
+        echo "🔗 Repository: https://github.com/sheikhsadi12/New-copy-app"
+        echo "🎉 AI Teacher Notebook is ready!"
